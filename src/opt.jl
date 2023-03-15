@@ -1,3 +1,5 @@
+# Codes for estimating parameters
+
 @doc raw"""
     cognitiveopt!(N::Real, θ, acc, cases, datatspan, pknown, lb, ub, alg)
 Parameter Estimation

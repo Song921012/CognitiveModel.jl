@@ -1,3 +1,5 @@
+# Codes for bayesian inference for parameters
+
 @doc raw"""
     cognitiveinference!(du,u,p,t)
 Bayesian inference of the data

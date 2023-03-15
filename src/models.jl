@@ -1,3 +1,6 @@
+# Cognitive models
+
+## models before
 function cognitive1!(du, u, p, t)
     S, V, E, I, R, β, M, C = u
     N, ν0, n, b, ϵ, σ, γ, k, β0, η, ξ, rm, rc, α, θ, c, r = p
@@ -13,6 +16,7 @@ function cognitive1!(du, u, p, t)
     du .= [dS, dV, dE, dI, dR, dβ, dM, dC]
 end
 
+# models now
 function cognitive2!(du, u, p, t)
     S, V, E, I, R, β, ν, M1, C1, M2, C2 = u
     N, ϵ, σ, γ, k1, k2, β0, ν0, ξ, η1, η2, η3, η4, rm1, rm2, rc1, rc2, α1, α2, θ1, θ2, c1, c2, c3, c4, r, s = p
@@ -30,6 +34,7 @@ function cognitive2!(du, u, p, t)
     du .= [dS, dV, dE, dI, dR, dβ, dν, dM1, dC1, dM2, dC2]
 end
 
+# models now
 function information!(du, u, p, t)
     M1, C1, M2, C2 = u
     η1, η2, η3, η4, rm1, rm2, rc1, rc2, α1, α2, θ1, θ2, c1, c2, c3, c4, r, s = p
