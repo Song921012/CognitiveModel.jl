@@ -11,3 +11,4 @@
 - `docs` folder: for generating documents (will be done at the end of the projects if we want to make this project a package)
 - `data` folder: data source files
 - `output` folder: results folder 
+- `dataprocess.ipynb`: data preprocessing
