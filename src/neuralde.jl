@@ -3,6 +3,7 @@ using Lux, DiffEqFlux, DifferentialEquations, Optimization, OptimizationOptimJL,
 rng = Random.default_rng()
 
 # generating test data. It can be replaced by real data
+
 u0 = Float32[2.0; 0.0]
 datasize = 30
 tspan = (0.0f0, 1.5f0)
