@@ -8,12 +8,12 @@ rng = Random.default_rng()
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
 
-trainingdata = Array(data[1:200, 4:7])'
+trainingdata = Array(data[1:60, 4:7])'
 
 # set up neural differential equation models
 u0 = Array(data[1, 4:7])
-datasize = 200
-tspan = (0.0f0, 200.0f0)
+datasize = 60
+tspan = (0.0f0, 60.0f0)
 tsteps = range(tspan[1], tspan[2], length=datasize)
 dudt2 = Lux.Chain(Lux.Dense(4, 32, relu), Lux.Dense(32, 32, tanh), Lux.Dense(32, 4))
 p, st = Lux.setup(rng, dudt2)
