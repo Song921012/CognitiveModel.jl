@@ -1,5 +1,5 @@
 /Manifest.toml
 /docs/build/
-/data/
+#/data/
 JuliaSysimage.so
 
