@@ -69,10 +69,10 @@ callback = function (p, l, pred; doplot=false)
     println(l)
     # plot current prediction against data
     if doplot
-        plt = scatter(tsteps, trainingdata[1, :], label="Minter data")
-        scatter!(tsteps, trainingdata[2, :], label="Cinter data")
-        plot!(plt, tsteps, pred[1, :], label="Minter prediction")
-        plot!(plt, tsteps, pred[2, :], label="Cinter prediction")
+        plt = scatter(tsteps, trainingdata[1, :], label="Accumulated cases")
+        scatter!(tsteps, trainingdata[2, :], label="Accumulated vaccinated individuals")
+        plot!(plt, tsteps, pred[1, :], label="Predicted accumulated cases")
+        plot!(plt, tsteps, pred[2, :], label="Predicted accumulated vaccinated individuals")
         display(plot(plt))
     end
     return false
@@ -135,17 +135,20 @@ callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
 # Save neural network architechtures and 
 using BSON: @save
 @save "./output/annepi.bson" ann
-@save "./output/annepi.bson" pfinal
-pred = predict_neuralode(pfinal)
-plt = scatter(tsteps, trainingdata[1, :], label="Mvac data")
-scatter!(tsteps, trainingdata[2, :], label="Cvac data")
+@save "./output/annepipfinal.bson" pfinal
+pred = predict_neuralode(pfinal)[5:6,:]
+plt = scatter(tsteps, trainingdata[1, :], label="Accumulated cases")
+plot!(plt, tsteps, pred[1, :], label="Predicted accumulated cases")
+display(plot(plt))
+savefig("./output/annepicase.png")
+plt=scatter(tsteps, trainingdata[2, :], label="Accumulated vaccinated individuals")
 #scatter!(tsteps, trainingdata[3, :], label="Minter data")
 #scatter!(tsteps, trainingdata[4, :], label="Cinter data")
-plot!(plt, tsteps, pred[1, :], label="Mvac prediction")
-plot!(plt, tsteps, pred[2, :], label="Cvac prediction")
+
+plot!(plt, tsteps, pred[2, :], label="Predicted accumulated vaccinated individuals")
 #plot!(plt, tsteps, pred[3, :], label="Minter prediction")
 #plot!(plt, tsteps, pred[4, :], label="Cinter prediction")
 display(plot(plt))
-savefig("./output/annepi.png")
+savefig("./output/annepivac.png")
 
 ##
