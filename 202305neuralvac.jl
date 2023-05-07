@@ -4,15 +4,13 @@ using Lux, DiffEqFlux, DifferentialEquations, Optimization, OptimizationOptimJL,
 using DataFrames
 using CSV
 using ComponentArrays
-using OptimizationOptimJL
-using OptimizationOptimisers
 rng = Random.default_rng()
 
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
 
-trainingdata = Array(data[87:150, 4:5])'
+trainingdata = Array(data[67:150, 6:7])'
 
 # set up neural differential equation models
 u0 = Array(trainingdata[:, 1])
@@ -70,4 +68,61 @@ optprob = Optimization.OptimizationProblem(optf, pinit)
 result_neuralode = Optimization.solve(optprob,
     ADAM(0.05),
     callback=callback,
-    maxiters=5)
+    maxiters=300)
+
+optprob2 = remake(optprob, u0=result_neuralode.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
+    Optim.BFGS(initial_stepnorm=0.01),
+    callback=callback,
+    allow_f_increases=false)
+
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
+    ADAM(0.001),
+    maxiters=300,
+    callback=callback,
+    allow_f_increases=false)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
+    Optim.LBFGS(),
+    callback=callback,
+    allow_f_increases=false)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
+    ADAM(0.001),
+    maxiters=300,
+    callback=callback,
+    allow_f_increases=false)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
+    Optim.LBFGS(),
+    callback=callback,
+    allow_f_increases=false)
+
+pfinal = result_neuralode2.u
+
+callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
+
+##
+# Save neural network architechtures and 
+using BSON: @save
+@save "./output/ann2vac.bson" dudt2
+@save "./output/ann2vac.bson" pfinal
+pred = predict_neuralode(pfinal)
+plt = scatter(tsteps, trainingdata[1, :], label="Mvac data")
+scatter!(tsteps, trainingdata[2, :], label="Cvac data")
+#scatter!(tsteps, trainingdata[3, :], label="Minter data")
+#scatter!(tsteps, trainingdata[4, :], label="Cinter data")
+plot!(plt, tsteps, pred[1, :], label="Mvac prediction")
+plot!(plt, tsteps, pred[2, :], label="Cvac prediction")
+#plot!(plt, tsteps, pred[3, :], label="Minter prediction")
+#plot!(plt, tsteps, pred[4, :], label="Cinter prediction")
+display(plot(plt))
+savefig("./output/ann2vac.png")
+
+##
