@@ -12,6 +12,8 @@
 
 - Step 3: Start `Julia Repl` and type `] instantiate`, and then it will download packages and set up the environment
 
+- Step 4: (Optional) Julia's compilation time is very long, if you want to shorten project start time, you can run `precompile.jl`
+
 # Code files description
 
 - `src` folder: don't touch it
