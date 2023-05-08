@@ -10,14 +10,20 @@ rng = Random.default_rng()
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
 
-trainingdata = Array(data[87:150, 10:11])'
+choosentime=range(87,150)
+
+choosencolumn=[10,11] # M, C score intervention
+
+trainingdata = Array(data[choosentime, choosencolumn])'
+
+
 
 # set up neural differential equation models
 u0 = Array(trainingdata[:,1])
-datasize = 64
-tspan = (0.0f0, 64.0f0)
+datasize = length(choosentime)
+tspan = (0.0f0, Float32(datasize))
 tsteps = range(tspan[1], tspan[2], length=datasize)
-dudt2 = Lux.Chain(Lux.Dense(2, 16, relu), Lux.Dense(16, 16, tanh),Lux.Dense(16, 16, tanh), Lux.Dense(16, 2))
+dudt2 = Lux.Chain(Lux.Dense(2, 32, relu), Lux.Dense(32, 32, tanh),Lux.Dense(32, 32, swish), Lux.Dense(32, 2))
 p, st = Lux.setup(rng, dudt2)
 #prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat=tsteps)
 prob_neuralode = ODEProblem((u, p, t) -> dudt2(u, p, st)[1], u0, tspan, ComponentArray(p))
@@ -99,18 +105,24 @@ callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
 
 ##
 using BSON: @save
-@save "./output/ann2inter.bson" dudt2
-@save "./output/ann2interpara.bson" pfinal
+@save "./output/anninter.bson" dudt2
+@save "./output/anninterpara.bson" pfinal
 pred = predict_neuralode(pfinal)
-plt = scatter(tsteps, trainingdata[1, :], label="Minter data")
-        scatter!(tsteps, trainingdata[2, :], label="Cinter data")
+plt = scatter(tsteps, trainingdata[1, :], label="Minter Score")
+        scatter!(tsteps, trainingdata[2, :], label="Cinter Score")
         #scatter!(tsteps, trainingdata[3, :], label="Minter data")
         #scatter!(tsteps, trainingdata[4, :], label="Cinter data")
-        plot!(plt, tsteps, pred[1, :], label="Minter prediction")
-        plot!(plt, tsteps, pred[2, :], label="Cinter prediction")
+        plot!(plt, tsteps, pred[1, :], label="Minter Score prediction")
+        plot!(plt, tsteps, pred[2, :], label="Cinter Score prediction")
         #plot!(plt, tsteps, pred[3, :], label="Minter prediction")
         #plot!(plt, tsteps, pred[4, :], label="Cinter prediction")
 display(plot(plt))
-savefig("./output/ann2inter.png")
-
+savefig("./output/anninter.png")
+neuralinter=DataFrame()
+neuralinter[!,"date"]=data[choosentime, 1]
+neuralinter[!,"MScoreInter"]=trainingdata[1, :]
+neuralinter[!,"CScoreInter"]=trainingdata[2, :]
+neuralinter[!,"PredMScoreInter"]=pred[1, :]
+neuralinter[!,"PredCScoreInter"]=pred[2, :]
+CSV.write("./output/neuralintervention.csv",neuralinter)
 ##

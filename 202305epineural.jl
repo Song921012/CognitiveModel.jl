@@ -10,8 +10,10 @@ rng = Random.default_rng()
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
-trainingdata = Array(data[87:150, [3,5]])'
-datascale=Array(data[87:150, 2:end])'
+choosentime = range(87, 150)
+choosencolumn = [3,5] # vaccined individuals, cases
+trainingdata = Array(data[choosentime, choosencolumn])'
+datascale=Array(data[choosentime, 2:end])'
 
 # set up neural differential equation models
 N=38250000.0f0
@@ -150,5 +152,13 @@ plot!(plt, tsteps, pred[2, :], label="Predicted accumulated vaccinated individua
 #plot!(plt, tsteps, pred[4, :], label="Cinter prediction")
 display(plot(plt))
 savefig("./output/annepivac.png")
+
+neuralepi = DataFrame()
+neuralepi[!, "date"] = data[choosentime, 1]
+neuralepi[!, "Case"] = trainingdata[1, :]
+neuralepi[!, "Vaccine"] = trainingdata[2, :]
+neuralepi[!, "PredCase"] = pred[1, :]
+neuralepi[!, "PredVaccine"] = pred[2, :]
+CSV.write("./output/neuralepi.csv", neuralepi)
 
 ##
