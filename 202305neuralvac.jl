@@ -5,7 +5,7 @@ using DataFrames
 using CSV
 using ComponentArrays
 rng = Random.default_rng()
-Random.seed!(rng, 1234)
+
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
@@ -112,7 +112,8 @@ callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
 ##
 using BSON: @save
 @save "./output/annvac.bson" dudt2
-@save "./output/annvacpara.bson" pfinal
+psave=collect(pfinal)
+@save "./output/annvacpara.bson" psave
 pred = predict_neuralode(pfinal)
 plt = scatter(tsteps, trainingdata[1, :], label="Mvac Score")
 scatter!(tsteps, trainingdata[2, :], label="Cvac Score")
