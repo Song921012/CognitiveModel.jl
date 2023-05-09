@@ -29,6 +29,7 @@ datasize = 64
 tspan = (0.0f0, 64.0f0)
 tsteps = range(tspan[1], tspan[2], length=datasize)
 ann = Lux.Chain(Lux.Dense(1, 32, relu), Lux.Dense(32, 32, tanh), Lux.Dense(32, 2))
+# relu, tanh, swish
 #ann = Lux.Chain(Lux.Dense(1, 64, relu), Lux.Dense(64, 32, relu), Lux.Dense(32, 2))
 p, st = Lux.setup(rng, ann)
 ann([0.1], p, st)[1]
