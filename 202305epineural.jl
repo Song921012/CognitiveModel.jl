@@ -29,6 +29,7 @@ datasize = 64
 tspan = (0.0f0, 64.0f0)
 tsteps = range(tspan[1], tspan[2], length=datasize)
 ann = Lux.Chain(Lux.Dense(1, 32, relu), Lux.Dense(32, 32, tanh), Lux.Dense(32, 2))
+#ann = Lux.Chain(Lux.Dense(1, 64, relu), Lux.Dense(64, 32, relu), Lux.Dense(32, 2))
 p, st = Lux.setup(rng, ann)
 ann([0.1], p, st)[1]
 function SVEIR_nn(du, u, p, t)
@@ -134,6 +135,14 @@ pfinal = result_neuralode2.u
 callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
 
 ##
+# beta(t), nu(t) function
+
+β(t)=min(1, abs(ann([t], pfinal, st)[1][1]))
+ν(t)=abs(ann([t],pfinal,st)[1][2])
+
+plot(tsteps, β.(tsteps))
+plot(tsteps, ν.(tsteps))
+##
 # Save neural network architechtures and 
 using BSON: @save
 @save "./output/annepi.bson" ann
@@ -159,6 +168,8 @@ neuralepi[!, "Case"] = trainingdata[1, :]
 neuralepi[!, "Vaccine"] = trainingdata[2, :]
 neuralepi[!, "PredCase"] = pred[1, :]
 neuralepi[!, "PredVaccine"] = pred[2, :]
+neuralepi[!,"beta"]=β.(tsteps)
+neuralepi[!,"nu"]=ν.(tsteps)
 CSV.write("./output/neuralepi.csv", neuralepi)
 
 ##
