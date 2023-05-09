@@ -1,3 +1,23 @@
+
+using BSON:@load
+using BSON
+using Lux
+using LuxCore
+using AxisArrays
+using Setfield
+using ComponentArrays
+using NNlib
+@load "./output/anninter.bson" dudt2
+@load "./output/anninterpara.bson" pfinal
+
+
+Using Adapt
+d2 = BSON.load("./output/anninterpara.bson", @__MODULE__)
+
+
+
+
+
 ##
 # Loading Packages and setup random seeds
 using Lux, DiffEqFlux, DifferentialEquations, Optimization, OptimizationOptimJL, Random, Plots

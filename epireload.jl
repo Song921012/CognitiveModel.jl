@@ -29,11 +29,16 @@ u0 = [N, v0, e0, i0, hi0, hv0]
 datasize = 64
 tspan = (0.0f0, 64.0f0)
 tsteps = range(tspan[1], tspan[2], length=datasize)
-ann = Lux.Chain(Lux.Dense(1, 32, relu), Lux.Dense(32, 32, tanh), Lux.Dense(32, 2))
-# relu, tanh, swish
-#ann = Lux.Chain(Lux.Dense(1, 64, relu), Lux.Dense(64, 32, relu), Lux.Dense(32, 2))
+
+
+# Reload
+
+using BSON: @load
+@load "./output/annepi.bson" ann
+@load "./output/annepipfinal.bson" psave
 p, st = Lux.setup(rng, ann)
-ann([0.1], p, st)[1]
+pinit = ComponentArray(p)
+pfinal = ComponentArray(psave,getaxes(pinit))
 function SVEIR_nn(du, u, p, t)
     S, V, E, I, HI, HV = u
     N = 38250000.0f0
@@ -57,7 +62,7 @@ function predict_neuralode(θ)
     Array(solve(prob, Tsit5(), saveat=tsteps))
 end
 
-predict_neuralode(p)[5:6, :]
+predict_neuralode(pfinal)[5:6, :]
 size(predict_neuralode(p)[5:6, :]) == size(trainingdata)
 # loss function and callbacks
 
@@ -67,74 +72,7 @@ function loss_neuralode(p)
     return loss, pred
 end
 
-loss_neuralode(p)
-
-
-callback = function (p, l, pred; doplot=false)
-    println(l)
-    # plot current prediction against data
-    if doplot
-        plt = scatter(tsteps, trainingdata[1, :], label="Accumulated cases")
-        scatter!(tsteps, trainingdata[2, :], label="Accumulated vaccinated individuals")
-        plot!(plt, tsteps, pred[1, :], label="Predicted accumulated cases")
-        plot!(plt, tsteps, pred[2, :], label="Predicted accumulated vaccinated individuals")
-        display(plot(plt))
-    end
-    return false
-end
-
-pinit = ComponentArray(p)
-callback(pinit, loss_neuralode(pinit)...; doplot=true)
-
-# use Optimization.jl to solve the problem
-##
-adtype = Optimization.AutoZygote()
-
-optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, pinit)
-
-result_neuralode = Optimization.solve(optprob,
-    OptimizationOptimisers.ADAM(0.05),
-    callback=callback,
-    maxiters=300)
-
-optprob2 = remake(optprob, u0=result_neuralode.u)
-
-result_neuralode2 = Optimization.solve(optprob2,
-    Optim.BFGS(initial_stepnorm=0.01),
-    callback=callback,
-    allow_f_increases=false)
-
-optprob2 = remake(optprob, u0=result_neuralode2.u)
-
-result_neuralode2 = Optimization.solve(optprob2,
-    Optimisers.ADAM(0.001),
-    maxiters=300,
-    callback=callback,
-    allow_f_increases=false)
-optprob2 = remake(optprob, u0=result_neuralode2.u)
-
-result_neuralode2 = Optimization.solve(optprob2,
-    Optim.LBFGS(),
-    callback=callback,
-    allow_f_increases=false)
-optprob2 = remake(optprob, u0=result_neuralode2.u)
-
-result_neuralode2 = Optimization.solve(optprob2,
-    Optimisers.ADAM(0.001),
-    maxiters=300,
-    callback=callback,
-    allow_f_increases=false)
-optprob2 = remake(optprob, u0=result_neuralode2.u)
-
-result_neuralode2 = Optimization.solve(optprob2,
-    Optim.LBFGS(),
-    callback=callback,
-    allow_f_increases=false)
-
-pfinal = result_neuralode2.u
-
-callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
+loss_neuralode(pfinal)
 
 ##
 # beta(t), nu(t) function
@@ -144,12 +82,6 @@ callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
 
 plot(tsteps, β.(tsteps))
 plot(tsteps, ν.(tsteps))
-##
-# Save neural network architechtures and 
-using BSON: @save
-@save "./output/annepi.bson" ann
-psave=collect(pfinal)
-@save "./output/annepipfinal.bson" psave
 pred = predict_neuralode(pfinal)[5:6, :]
 plt = scatter(tsteps, trainingdata[1, :], label="Accumulated cases")
 plot!(plt, tsteps, pred[1, :], label="Predicted accumulated cases")
