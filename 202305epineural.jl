@@ -6,7 +6,7 @@ using CSV
 using ComponentArrays
 using OptimizationOptimisers
 rng = Random.default_rng()
-Random.seed!(rng, 1234)
+Random.seed!(rng, 10)
 
 # load training dta
 
@@ -40,11 +40,11 @@ function SVEIR_nn(du, u, p, t)
     ϵ = 0.8f0
     σ1 = 0.19f0
     γ1 = 0.1f0
-    du[1] = -min(1, abs(ann([t], p, st)[1][1])) * I * S / N - abs(ann([t], p, st)[1][2]) * S
+    du[1] = -min(5.0f0, abs(ann([t], p, st)[1][1])) * I * S / N - abs(ann([t], p, st)[1][2]) * S
     du[2] = abs(ann([t], p, st)[1][2]) * S - (1.0f0 - ϵ) * min(1, abs(ann([t], p, st)[1][1])) * I * V / N
-    du[3] = min(1, abs(ann([t], p, st)[1][1])) * I * S / N + (1.0f0 - ϵ) * min(1, abs(ann([t], p, st)[1][1])) * I * V / N - σ1 * E
+    du[3] = min(5.0f0, abs(ann([t], p, st)[1][1])) * I * S / N + (1.0f0 - ϵ) * min(5.0f0, abs(ann([t], p, st)[1][1])) * I * V / N - σ1 * E
     du[4] = σ1 * E - γ1 * I
-    du[5] = min(1, abs(ann([t], p, st)[1][1])) * I * S / N + (1.0f0 - ϵ) * min(1, abs(ann([t], p, st)[1][1])) * I * V / N
+    du[5] = min(5.0f0, abs(ann([t], p, st)[1][1])) * I * S / N + (1.0f0 - ϵ) * min(5.0f0, abs(ann([t], p, st)[1][1])) * I * V / N
     du[6] = abs(ann([t], p, st)[1][2]) * S
 end
 prob_neuralode = ODEProblem(SVEIR_nn, u0, tspan, ComponentArray(p))
@@ -96,7 +96,7 @@ optprob = Optimization.OptimizationProblem(optf, pinit)
 result_neuralode = Optimization.solve(optprob,
     OptimizationOptimisers.ADAM(0.05),
     callback=callback,
-    maxiters=300)
+    maxiters=100)
 
 optprob2 = remake(optprob, u0=result_neuralode.u)
 
@@ -104,6 +104,8 @@ result_neuralode2 = Optimization.solve(optprob2,
     Optim.BFGS(initial_stepnorm=0.01),
     callback=callback,
     allow_f_increases=false)
+
+
 
 optprob2 = remake(optprob, u0=result_neuralode2.u)
 
