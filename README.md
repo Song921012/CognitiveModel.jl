@@ -4,6 +4,16 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://Song921012.github.io/CognitiveModel.jl/dev/)
 [![Build Status](https://github.com/Song921012/CognitiveModel.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Song921012/CognitiveModel.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
+# Log
+
+- `202306epineural.jl`: splitted $\beta(t)$, $\nu(t)$
+
+- `202306integratedepi.jl`: first integrated method
+
+- `202306integrated2.jl`: second integrated method
+
+- Question: $\beta(t, M1,C1), \beta(M2,C2)$
+
 # Set Up Environment
 
 - Step 1: install `Julia`(necessary) and `VScode`(Optional but recommended), and configure your environment

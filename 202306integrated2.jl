@@ -27,10 +27,13 @@ vacdata = Array(data[choosentime, vaccolumn])'
 m20, c20 = Float32.(Array(vacdata[:, 1]))
 
 
-
-
+#
+datasize = 64
+tspan = (0.0f0, Float32(datasize))
+tsteps = range(tspan[1], tspan[2], length=datasize)
 
 # reload M1,C1,M2,C2
+## Obtain M1(t), C1(t) function
 using BSON: @load
 @load "./output/anninter.bson" dudt2
 anninter = dudt2
@@ -39,7 +42,13 @@ pintersave = psave
 pinter, stinter = Lux.setup(rng, anninter)
 pinterinit = ComponentArray(pinter)
 pinterfinal = ComponentArray(pintersave, getaxes(pinterinit))
-
+u0inter = [m10, c10]
+interode = ODEProblem((u, p, t) -> anninter(u, p, stinter)[1], u0inter, tspan, pinterfinal)
+solinter = solve(interode, Tsit5())
+display(plot(solinter))
+M1(t) = solinter(t)[1]
+C1(t) = solinter(t)[2]
+## Obtain M2(t), C2(t) function
 @load "./output/annvac.bson" dudt2
 annvac = dudt2
 @load "./output/annvacpara.bson" psave
@@ -47,7 +56,14 @@ pvacsave = psave
 pvac, stvac = Lux.setup(rng, annvac)
 pvacinit = ComponentArray(pvac)
 pvacfinal = ComponentArray(pvacsave, getaxes(pvacinit))
+u0vac = [m20, c20]
+vacode = ODEProblem((u, p, t) -> annvac(u, p, stvac)[1], u0vac, tspan, pvacfinal)
+solvac = solve(vacode, Tsit5())
+display(plot(solvac))
+M2(t) = solvac(t)[1]
+C2(t) = solvac(t)[2]
 
+##
 # set up neural differential equation models
 N = 38250000.0f0
 σ1 = 0.19
@@ -57,10 +73,8 @@ hv0 = Float32(trainingdata[2, 1])
 v0 = Float32(trainingdata[2, 1])
 e0 = Float32(datascale[1, 1] / σ1)
 i0 = Float32(datascale[1, 1] / γ1)
-u0 = [N, v0, e0, i0, hi0, hv0, m10, c10, m20, c20]
-datasize = 64
-tspan = (0.0f0, 64.0f0)
-tsteps = range(tspan[1], tspan[2], length=datasize)
+u0 = [N, v0, e0, i0, hi0, hv0]
+
 ann1 = Flux.Chain(Flux.Dense(5, 64, relu), Flux.Dense(64, 1))
 ann2 = Flux.Chain(Flux.Dense(5, 64, relu), Flux.Dense(64, 1))
 p1, re1 = Flux.destructure(ann1)
@@ -71,27 +85,24 @@ re1(p1)([1.0f0, m10, c10, m20, c20])
 re2(p2)([1.0f0, m10, c10, m20, c20])
 
 function SVEIR_nn(du, u, p, t)
-    S, V, E, I, HI, HV, M1, C1, M2, C2 = u
+    S, V, E, I, HI, HV = u
     N = 38250000.0f0
     ϵ = 0.8f0
     σ1 = 0.19f0
     γ1 = 0.1f0
-    β = min(5.0f0, abs(re1(p[1:length(p1)])([t, M1, C1])[1]))
-    ν = abs(re2(p[(length(p1)+1):end])([t, M2, C2])[1])
+    β = min(5.0f0, abs(re1(p[1:length(p1)])([t, M1(t), C1(t)])[1]))
+    ν = abs(re2(p[(length(p1)+1):end])([t, M2(t), C2(t)])[1])
     du[1] = -β * I * S / N - ν * S
     du[2] = ν * S - (1.0f0 - ϵ) * β * I * V / N
     du[3] = β * I * S / N + (1.0f0 - ϵ) * β * I * V / N - σ1 * E
     du[4] = σ1 * E - γ1 * I
     du[5] = β * I * S / N + (1.0f0 - ϵ) * β * I * V / N
     du[6] = ν * S
-    du[7] = anninter([M1, C1], pinterfinal, stinter)[1][1]
-    du[8] = anninter([M1, C1], pinterfinal, stinter)[1][2]
-    du[9] = annvac([M2, C2], pvacfinal, stvac)[1][1]
-    du[10] = annvac([M2, C2], pvacfinal, stvac)[1][2]
 end
 prob_neuralode = ODEProblem(SVEIR_nn, u0, tspan, [p1; p2])
 
 
+##
 # simulate the neural differential equation models
 function predict_neuralode(θ)
     #Array(prob_neuralode(u0, p, st)[1])
@@ -105,13 +116,13 @@ size(predict_neuralode(p)[5:6, :]) == size(trainingdata)
 sol = predict_neuralode(p)
 pltinter = scatter(tsteps, interdata[1, :], label="Minter data")
 scatter!(tsteps, interdata[2, :], label="Cinter data")
-plot!(pltinter, tsteps, sol[7, :], label="Minter prediction")
-plot!(pltinter, tsteps, sol[8, :], label="Cinter prediction")
+plot!(pltinter, tsteps, M1.(tsteps), label="Minter prediction")
+plot!(pltinter, tsteps, C1.(tsteps), label="Cinter prediction")
 display(plot(pltinter))
 pltvac = scatter(tsteps, vacdata[1, :], label="Mvac data")
 scatter!(tsteps, vacdata[2, :], label="Cvac data")
-plot!(pltvac, tsteps, sol[9, :], label="Mvac prediction")
-plot!(pltvac, tsteps, sol[10, :], label="Cvac prediction")
+plot!(pltvac, tsteps, M2.(tsteps), label="Mvac prediction")
+plot!(pltvac, tsteps, C2.(tsteps), label="Cvac prediction")
 display(plot(pltvac))
 
 # loss function and callbacks
@@ -143,7 +154,7 @@ callback(pinit, loss_neuralode(pinit)...; doplot=true)
 
 # use Optimization.jl to solve the problem
 ##
-adtype = Optimization.AutoForwardDiff()
+adtype = Optimization.AutoZygote()
 
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, pinit)

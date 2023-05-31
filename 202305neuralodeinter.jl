@@ -5,25 +5,26 @@ using DataFrames
 using CSV
 using ComponentArrays
 rng = Random.default_rng()
-Random.seed!(rng, 0)
+Random.seed!(rng, 1234)
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
+data = DataFrame(CSV.File("./output/data.csv"))
 
-choosentime=range(87,150)
+choosentime = range(87, 150)
 
-choosencolumn=[10,11] # M, C score intervention
+choosencolumn = [10, 11] # M, C score intervention
 
 trainingdata = Array(data[choosentime, choosencolumn])'
 
 
 
 # set up neural differential equation models
-u0 = Array(trainingdata[:,1])
+u0 = Array(trainingdata[:, 1])
 datasize = length(choosentime)
 tspan = (0.0f0, Float32(datasize))
 tsteps = range(tspan[1], tspan[2], length=datasize)
-dudt2 = Lux.Chain(Lux.Dense(2, 32, relu), Lux.Dense(32, 32, tanh),Lux.Dense(32, 32, swish), Lux.Dense(32, 2))
+dudt2 = Lux.Chain(Lux.Dense(2, 32, relu), Lux.Dense(32, 32, tanh), Lux.Dense(32, 32, swish), Lux.Dense(32, 2))
 p, st = Lux.setup(rng, dudt2)
 #prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat=tsteps)
 prob_neuralode = ODEProblem((u, p, t) -> dudt2(u, p, st)[1], u0, tspan, ComponentArray(p))
@@ -32,8 +33,8 @@ prob_neuralode = ODEProblem((u, p, t) -> dudt2(u, p, st)[1], u0, tspan, Componen
 # simulate the neural differential equation models
 function predict_neuralode(θ)
     #Array(prob_neuralode(u0, p, st)[1])
-    prob = remake(prob_neuralode, p = θ)
-    Array(solve(prob, Tsit5(), saveat = tsteps))
+    prob = remake(prob_neuralode, p=θ)
+    Array(solve(prob, Tsit5(), saveat=tsteps))
 end
 
 predict_neuralode(p)
@@ -88,7 +89,7 @@ result_neuralode2 = Optimization.solve(optprob2,
 optprob2 = remake(optprob, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-Optimisers.ADAM(0.001),
+    Optimisers.ADAM(0.001),
     maxiters=300,
     callback=callback,
     allow_f_increases=false)
@@ -98,6 +99,13 @@ result_neuralode2 = Optimization.solve(optprob2,
     Optim.LBFGS(),
     callback=callback,
     allow_f_increases=false)
+
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
+        Optim.BFGS(initial_stepnorm=0.01),
+        callback=callback,
+        allow_f_increases=false)
 
 pfinal = result_neuralode2.u
 
@@ -110,20 +118,20 @@ psave = collect(pfinal)
 @save "./output/anninterpara.bson" psave
 pred = predict_neuralode(pfinal)
 plt = scatter(tsteps, trainingdata[1, :], label="Minter Score")
-        scatter!(tsteps, trainingdata[2, :], label="Cinter Score")
-        #scatter!(tsteps, trainingdata[3, :], label="Minter data")
-        #scatter!(tsteps, trainingdata[4, :], label="Cinter data")
-        plot!(plt, tsteps, pred[1, :], label="Minter Score prediction")
-        plot!(plt, tsteps, pred[2, :], label="Cinter Score prediction")
-        #plot!(plt, tsteps, pred[3, :], label="Minter prediction")
-        #plot!(plt, tsteps, pred[4, :], label="Cinter prediction")
+scatter!(tsteps, trainingdata[2, :], label="Cinter Score")
+#scatter!(tsteps, trainingdata[3, :], label="Minter data")
+#scatter!(tsteps, trainingdata[4, :], label="Cinter data")
+plot!(plt, tsteps, pred[1, :], label="Minter Score prediction")
+plot!(plt, tsteps, pred[2, :], label="Cinter Score prediction")
+#plot!(plt, tsteps, pred[3, :], label="Minter prediction")
+#plot!(plt, tsteps, pred[4, :], label="Cinter prediction")
 display(plot(plt))
 savefig("./output/anninter.png")
-neuralinter=DataFrame()
-neuralinter[!,"date"]=data[choosentime, 1]
-neuralinter[!,"MScoreInter"]=trainingdata[1, :]
-neuralinter[!,"CScoreInter"]=trainingdata[2, :]
-neuralinter[!,"PredMScoreInter"]=pred[1, :]
-neuralinter[!,"PredCScoreInter"]=pred[2, :]
-CSV.write("./output/neuralintervention.csv",neuralinter)
+neuralinter = DataFrame()
+neuralinter[!, "date"] = data[choosentime, 1]
+neuralinter[!, "MScoreInter"] = trainingdata[1, :]
+neuralinter[!, "CScoreInter"] = trainingdata[2, :]
+neuralinter[!, "PredMScoreInter"] = pred[1, :]
+neuralinter[!, "PredCScoreInter"] = pred[2, :]
+CSV.write("./output/neuralintervention.csv", neuralinter)
 ##
