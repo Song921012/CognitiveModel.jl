@@ -14,6 +14,8 @@
 
 - Question: $\beta(t, M1,C1), \beta(M2,C2)$
 
+- Question: improve training efficiency
+
 # Set Up Environment
 
 - Step 1: install `Julia`(necessary) and `VScode`(Optional but recommended), and configure your environment
