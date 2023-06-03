@@ -1,38 +1,64 @@
-# Import necessary libraries
-import numpy as np
-from scipy.integrate import odeint
-import matplotlib.pyplot as plt
+import SparseArrays.getindex_traverse_col
+using HSL
+using Test
+using SparseArrays
+# this should be fixed in a future release
+# see
+getindex_traverse_col(::AbstractUnitRange, lo::Integer, hi::Integer) = lo:hi
 
-# Define the SIR model differential equations
-def sir_model(y, t, beta, gamma):
-    S, I, R = y
-    dSdt = -beta * S * I
-    dIdt = beta * S * I - gamma * I
-    dRdt = gamma * I
-    return dSdt, dIdt, dRdt
+function test_ma57(A, M, b, xexact)
+  ϵ = sqrt(eps(eltype(A)))
+  ma57_factorize!(M)
+  x = ma57_solve(M, b)
+  @test norm(x - xexact) ≤ ϵ * norm(xexact)
 
-# Define initial conditions
-N = 1000
-I0, R0 = 1, 0
-S0 = N - I0 - R0
-y0 = S0, I0, R0
+  # solve with iterative refinement
+  x = ma57_solve(M, b, 2)
+  @test norm(x - xexact) ≤ ϵ * norm(xexact)
 
-# Define parameters
-beta = 0.2
-gamma = 1./10
+  # test min norm
+  A_mn = A[1:2, :]
+  x_mn, y_mn = ma57_min_norm(A_mn, b[1:2]) # == ma57_solve(A_mn, b[1:2])
+  x_mn_star = A_mn' * (inv(Matrix(A_mn * A_mn')) * b[1:2])
+  @test norm(x_mn - x_mn_star) ≤ ϵ * norm(x_mn_star)
 
-# Define time points
-t = np.linspace(0, 200, 200)
+  ## solve least squares
+  A_ls = A[:, 1:2]
+  r_ls, x_ls = ma57_least_squares(A_ls, b)   # == ma57_solve(A_ls, b)
+  x_ls_star = qr(Matrix(A_ls)) \ b
+  @test norm(x_ls - x_ls_star) ≤ ϵ * norm(x_ls_star)
+end
+using LinearAlgebra
+T=Float32
+    n = 5
+    rows = Cint[1, 1, 2, 2, 3, 3, 5]
+    cols = Cint[1, 2, 3, 5, 3, 4, 5]
+    vals = T[2, 3, 4, 6, 1, 5, 1]
+    A = sparse(rows, cols, vals, n, n)
+    A = A + triu(A, 1)'
 
-# Solve the SIR model differential equations
-sol = odeint(sir_model, y0, t, args=(beta, gamma))
+    M = ma57_coord(n, rows, cols, vals)
 
-# Plot the results
-plt.plot(t, sol[:, 0], label='S(t)')
-plt.plot(t, sol[:, 1], label='I(t)')
-plt.plot(t, sol[:, 2], label='R(t)')
-plt.legend()
-plt.xlabel('Time')
-plt.ylabel('Number of individuals')
-plt.title('SIR Model')
-plt.show()
+    b = Float32.([8, 45, 31, 15, 17])
+    xexact = T[1, 2, 3, 4, 5]
+    test_ma57(A, M, b, xexact)
+
+    # test with non-default options
+    control = Ma57_Control{T}()
+    info = Ma57_Info{T}()
+    control.icntl[6] = 4  # choose a different ordering
+    # give lower triangle: swap rows and cols
+    LBL = ma57_coord(n, cols, rows, vals, control, info)
+    ma57_factorize!(LBL)
+    work = similar(b)
+    x = copy(b)
+    ma57_solve!(LBL, x, work)
+    ϵ = sqrt(eps(T))
+    @test norm(x - xexact) ≤ ϵ * norm(xexact)
+
+    A = convert(T, 3) * convert(SparseMatrixCSC{T, Cint}, sprand(T, n, n, 0.5))
+    A = A + A' + convert(SparseMatrixCSC{T, Cint}, sparse(T(1) * I, n, n))
+    M = Ma57(A)
+    b = rand(T, n)
+    xexact = lu(A) \ b
+    test_ma57(A, M, b, xexact)

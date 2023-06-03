@@ -6,13 +6,15 @@
 
 # Log
 
+20230531
+
 - `202306epineural.jl`: splitted $\beta(t)$, $\nu(t)$
 
 - `202306integratedepi.jl`: first integrated method
 
 - `202306integrated2.jl`: second integrated method
 
-- Question: $\beta(t, M1,C1), \beta(M2,C2)$
+- Question: $\beta(t, M1,C1), \beta(M1,C1)$
 
 - Question: improve training efficiency
 
