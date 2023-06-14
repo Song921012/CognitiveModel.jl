@@ -75,14 +75,14 @@ e0 = Float32(datascale[1, 1] / σ1)
 i0 = Float32(datascale[1, 1] / γ1)
 u0 = [N, v0, e0, i0, hi0, hv0]
 
-ann1 = Flux.Chain(Flux.Dense(5, 64, relu), Flux.Dense(64, 1))
-ann2 = Flux.Chain(Flux.Dense(5, 64, relu), Flux.Dense(64, 1))
+ann1 = Flux.Chain(Flux.Dense(2, 64, relu), Flux.Dense(64, 1))
+ann2 = Flux.Chain(Flux.Dense(2, 64, relu), Flux.Dense(64, 1))
 p1, re1 = Flux.destructure(ann1)
 p2, re2 = Flux.destructure(ann2)
 p1 = Float32.(p1)
 p2 = Float32.(p2)
-re1(p1)([1.0f0, m10, c10, m20, c20])
-re2(p2)([1.0f0, m10, c10, m20, c20])
+re1(p1)([m10, c10])
+re2(p2)([m20, c20])
 
 function SVEIR_nn(du, u, p, t)
     S, V, E, I, HI, HV = u
@@ -90,8 +90,8 @@ function SVEIR_nn(du, u, p, t)
     ϵ = 0.8f0
     σ1 = 0.19f0
     γ1 = 0.1f0
-    β = min(5.0f0, abs(re1(p[1:length(p1)])([t, M1(t), C1(t)])[1]))
-    ν = abs(re2(p[(length(p1)+1):end])([t, M2(t), C2(t)])[1])
+    β = min(5.0f0, abs(re1(p[1:length(p1)])([M1(t), C1(t)])[1]))
+    ν = abs(re2(p[(length(p1)+1):end])([M2(t), C2(t)])[1])
     du[1] = -β * I * S / N - ν * S
     du[2] = ν * S - (1.0f0 - ϵ) * β * I * V / N
     du[3] = β * I * S / N + (1.0f0 - ϵ) * β * I * V / N - σ1 * E
