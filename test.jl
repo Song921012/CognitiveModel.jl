@@ -1,3 +1,7 @@
+using BenchmarkTools;using Random;rng = MersenneTwister(1234); A=rand(1000,1000);b=rand(1000);@btime inv(A)*b;
+
+
+
 import SparseArrays.getindex_traverse_col
 using HSL
 using Test

@@ -5,7 +5,7 @@ using DataFrames
 using CSV
 using ComponentArrays
 rng = Random.default_rng()
-Random.seed!(rng, 1111)
+Random.seed!(rng, 5678)
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
@@ -24,10 +24,55 @@ u0 = Array(trainingdata[:, 1])
 datasize = length(choosentime)
 tspan = (0.0f0, Float32(datasize))
 tsteps = range(tspan[1], tspan[2], length=datasize)
-dudt2 = Lux.Chain(Lux.Dense(2, 32, tanh), Lux.Dense(32, 160, lisht), Lux.Dense(160, 2))
+dudt2 = Lux.Chain(Lux.Dense(2, 32, relu), Lux.Dense(32, 32, tanh), Lux.Dense(32, 32, swish), Lux.Dense(32, 2))
 p, st = Lux.setup(rng, dudt2)
 #prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat=tsteps)
 prob_neuralode = ODEProblem((u, p, t) -> dudt2(u, p, st)[1], u0, tspan, ComponentArray(p))
+
+
+
+
+function plot_multiple_shoot(plt, preds, group_size)
+	step = group_size-1
+	ranges = group_ranges(datasize, group_size)
+
+	for (i, rg) in enumerate(ranges)
+		plot!(plt, tsteps[rg], preds[i][1,:], markershape=:circle, label="Group $(i)")
+	end
+end
+
+# Animate training, cannot make animation on CI server
+# anim = Plots.Animation()
+iter = 0
+callback = function (p, l, preds; doplot = false)
+  display(l)
+  global iter
+  iter += 1
+  if doplot && iter%1 == 0
+    # plot the original data
+    plt = scatter(tsteps, trainingdata[1, :], label="Minter data")
+
+    # plot the different predictions for individual shoot
+    plot_multiple_shoot(plt, preds[1,:], group_size)
+
+    frame(anim)
+    display(plot(plt))
+  end
+  return false
+end
+
+# Define parameters for Multiple Shooting
+group_size = 3
+continuity_term = 200
+
+function loss_function(data, pred)
+	return sum(abs2, data .- pred)
+end
+
+function loss_multiple_shooting(p)
+    return multiple_shoot(p, trainingdata, tsteps, prob_neuralode, loss_function, Tsit5(),
+                          group_size; continuity_term)
+end
 
 
 # simulate the neural differential equation models
@@ -48,7 +93,7 @@ function loss_neuralode(p)
     return loss, pred
 end
 
-loss_neuralode(p)
+loss_multiple_shooting(p)
 
 callback = function (p, l, pred; doplot=false)
     println(l)
@@ -76,9 +121,9 @@ optprob = Optimization.OptimizationProblem(optf, pinit)
 using OptimizationOptimisers
 
 result_neuralode = Optimization.solve(optprob,
-    Optimisers.ADAM(0.01),
+    Optimisers.ADAM(0.05),
     callback=callback,
-    maxiters=3)
+    maxiters=300)
 
 optprob2 = remake(optprob, u0=result_neuralode.u)
 
@@ -94,7 +139,12 @@ result_neuralode2 = Optimization.solve(optprob2,
     maxiters=300,
     callback=callback,
     allow_f_increases=false)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
 
+result_neuralode2 = Optimization.solve(optprob2,
+    Optim.LBFGS(),
+    callback=callback,
+    allow_f_increases=false)
 
 optprob2 = remake(optprob, u0=result_neuralode2.u)
 
@@ -105,14 +155,13 @@ result_neuralode2 = Optimization.solve(optprob2,
 
 optprob2 = remake(optprob, u0=result_neuralode2.u)
 
-
 result_neuralode2 = Optimization.solve(optprob2,
-    Optimisers.ADAM(0.01),
+    Optimisers.ADAM(0.00001),
     maxiters=300,
     callback=callback,
     allow_f_increases=false)
 
-optprob2 = remake(optprob, u0=result_neuralode2.u)
+optprob2 = remake(optprob, u0=result_neuralode.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
     Optim.BFGS(initial_stepnorm=0.01),
