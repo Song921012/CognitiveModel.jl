@@ -5,7 +5,7 @@ using DataFrames
 using CSV
 using ComponentArrays
 rng = Random.default_rng()
-
+Random.seed!(rng, 1111)
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
@@ -23,7 +23,7 @@ u0 = Array(trainingdata[:, 1])
 datasize = length(choosentime)
 tspan = (0.0f0, Float32(datasize))
 tsteps = range(tspan[1], tspan[2], length=datasize)
-dudt2 = Lux.Chain(Lux.Dense(2, 16, relu), Lux.Dense(16, 16, tanh), Lux.Dense(16, 16, tanh), Lux.Dense(16, 2))
+dudt2 = Lux.Chain(Lux.Dense(2, 32, tanh), Lux.Dense(32, 2))
 p, st = Lux.setup(rng, dudt2)
 #prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat=tsteps)
 prob_neuralode = ODEProblem((u, p, t) -> dudt2(u, p, st)[1], u0, tspan, ComponentArray(p))

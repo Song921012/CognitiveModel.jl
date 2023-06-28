@@ -35,6 +35,7 @@ tsteps = range(tspan[1], tspan[2], length=datasize)
 # reload M1,C1,M2,C2
 ## Obtain M1(t), C1(t) function
 using BSON: @load
+using NNlib
 @load "./output/anninter.bson" dudt2
 anninter = dudt2
 @load "./output/anninterpara.bson" psave
@@ -206,6 +207,8 @@ callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
 
 ##
 # beta(t), nu(t) function
+probfinal = remake(prob_neuralode, p=pfinal)
+
 β(t) = min(5.0f0, abs(re1(pfinal[1:length(p1)])([t])[1]))
 ν(t) = abs(re2(pfinal[(length(p1)+1):end])([t])[1])
 
