@@ -5,7 +5,7 @@ using DataFrames
 using CSV
 using ComponentArrays
 rng = Random.default_rng()
-Random.seed!(rng, 1111)
+Random.seed!(rng, 10)
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
