@@ -7,13 +7,13 @@ using CSV
 using ComponentArrays
 using OptimizationOptimisers
 rng = Random.default_rng()
-Random.seed!(rng, 10)
+Random.seed!(rng, 1314)
 
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
-choosentime = range(366, 450)
-choosencolumn = [3, 5] # vaccined individuals, cases
+choosentime = range(366, 425)
+choosencolumn = [3, 15] # vaccined individuals, cases
 trainingdata = Array(data[choosentime, choosencolumn])'
 datascale = Array(data[choosentime, 2:end])'
 
@@ -32,17 +32,17 @@ m20, c20 = Float32.(Array(vacdata[:, 1]))
 
 # reload M1,C1,M2,C2
 using BSON: @load
-@load "./output/anninter.bson" dudt2
+@load "./output/anninter_second.bson" dudt2
 anninter = dudt2
-@load "./output/anninterpara.bson" psave
+@load "./output/anninterpara_second.bson" psave
 pintersave = psave
 pinter, stinter = Lux.setup(rng, anninter)
 pinterinit = ComponentArray(pinter)
 pinterfinal = ComponentArray(pintersave, getaxes(pinterinit))
 
-@load "./output/annvac.bson" dudt2
+@load "./output/annvac_second.bson" dudt2
 annvac = dudt2
-@load "./output/annvacpara.bson" psave
+@load "./output/annvacpara_second.bson" psave
 pvacsave = psave
 pvac, stvac = Lux.setup(rng, annvac)
 pvacinit = ComponentArray(pvac)
@@ -58,8 +58,8 @@ v0 = Float32(trainingdata[2, 1])
 e0 = Float32(datascale[1, 1] / σ1)
 i0 = Float32(datascale[1, 1] / γ1)
 u0 = [N, v0, e0, i0, hi0, hv0, m10, c10, m20, c20]
-datasize = 64
-tspan = (0.0f0, 64.0f0)
+datasize = 60
+tspan = (0.0f0, 60.0f0)
 tsteps = range(tspan[1], tspan[2], length=datasize)
 ann1 = Flux.Chain(Flux.Dense(2, 64, tanh), Flux.Dense(64, 1))
 ann2 = Flux.Chain(Flux.Dense(2, 64, tanh), Flux.Dense(64, 1))
@@ -148,21 +148,30 @@ adtype = Optimization.AutoForwardDiff()
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, pinit)
 
-result_neuralode = Optimization.solve(optprob,
-    OptimizationOptimisers.ADAM(0.05),
+result_neuralode2 = Optimization.solve(optprob,
+    Optim.BFGS(initial_stepnorm=0.01),
     callback=callback,
-    maxiters=100)
+    maxiters=100,
+    allow_f_increases=false)
 
-optprob2 = remake(optprob, u0=result_neuralode.u)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
 
+result_neuralode2 = Optimization.solve(optprob2,
+    OptimizationOptimisers.ADAM(0.1),
+    callback=callback,
+    maxiters=300)
+
+
+optprob2 = remake(optprob2, u0=result_neuralode2.u)
 result_neuralode2 = Optimization.solve(optprob2,
     Optim.BFGS(initial_stepnorm=0.01),
     callback=callback,
+    maxiters=50,
     allow_f_increases=false)
 
 
 
-optprob2 = remake(optprob, u0=result_neuralode2.u)
+optprob2 = remake(optprob2, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
     Optimisers.ADAM(0.001),
@@ -196,7 +205,7 @@ callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
 ##
 # beta(t), nu(t) function
 probfinal = remake(prob_neuralode, p=pfinal)
-solfinal=solve(probfinal, Vern7(), saveat=tsteps)
+solfinal = solve(probfinal, Vern7(), saveat=tsteps)
 β(t) = min(5.0f0, abs(re1(pfinal[1:length(p1)])([solfinal(t)[7], solfinal(t)[8]])[1]))
 ν(t) = abs(re2(pfinal[(length(p1)+1):end])([solfinal(t)[9], solfinal(t)[10]])[1])
 
@@ -211,15 +220,15 @@ plot(tsteps, ν.(tsteps))
 ##
 # Save neural network architechtures and 
 using BSON: @save
-@save "./output/ann1epi.bson" ann1
-@save "./output/ann2epi.bson" ann2
+@save "./output/ann1epi_second.bson" ann1
+@save "./output/ann2epi_second.bson" ann2
 psave = pfinal
-@save "./output/ann12epipfinal.bson" psave
+@save "./output/ann12epipfinal_second.bson" psave
 pred = predict_neuralode(pfinal)[5:6, :]
 plt = scatter(tsteps, trainingdata[1, :], label="Accumulated cases")
 plot!(plt, tsteps, pred[1, :], label="Predicted accumulated cases")
 display(plot(plt))
-savefig("./output/ann12epicase.png")
+savefig("./output/ann12epicase_second.png")
 plt = scatter(tsteps, trainingdata[2, :], label="Accumulated vaccinated individuals")
 #scatter!(tsteps, trainingdata[3, :], label="Minter data")
 #scatter!(tsteps, trainingdata[4, :], label="Cinter data")
@@ -228,7 +237,7 @@ plot!(plt, tsteps, pred[2, :], label="Predicted accumulated vaccinated individua
 #plot!(plt, tsteps, pred[3, :], label="Minter prediction")
 #plot!(plt, tsteps, pred[4, :], label="Cinter prediction")
 display(plot(plt))
-savefig("./output/ann12epivac.png")
+savefig("./output/ann12epivac_second.png")
 
 neuralepi = DataFrame()
 neuralepi[!, "date"] = data[choosentime, 1]
@@ -238,6 +247,6 @@ neuralepi[!, "PredCase"] = pred[1, :]
 neuralepi[!, "PredVaccine"] = pred[2, :]
 neuralepi[!, "beta"] = β.(tsteps)
 neuralepi[!, "nu"] = ν.(tsteps)
-CSV.write("./output/neuralepi12.csv", neuralepi)
+CSV.write("./output/neuralepi12_second.csv", neuralepi)
 
 ##

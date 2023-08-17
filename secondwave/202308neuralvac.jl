@@ -5,12 +5,12 @@ using DataFrames
 using CSV
 using ComponentArrays
 rng = Random.default_rng()
-Random.seed!(rng, 123)
+Random.seed!(rng, 1314)
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
 
-choosentime = range(366, 450)
+choosentime = range(366, 425)
 
 choosencolumn = [12, 13] # M, C score vaccine
 
