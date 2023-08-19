@@ -7,7 +7,7 @@ using CSV
 using ComponentArrays
 using OptimizationOptimisers
 rng = Random.default_rng()
-Random.seed!(rng, 1314)
+Random.seed!(rng, 735)
 
 # load training dta
 
@@ -149,18 +149,28 @@ optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, pinit)
 
 result_neuralode2 = Optimization.solve(optprob,
+    OptimizationOptimisers.ADAM(0.01),
+    callback=callback,
+    maxiters=10)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
     Optim.BFGS(initial_stepnorm=0.01),
     callback=callback,
     maxiters=100,
     allow_f_increases=false)
 
-optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+
+
+optprob2 = remake(optprob2, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-    OptimizationOptimisers.ADAM(0.1),
+    Optimisers.ADAM(0.00001),
+    maxiters
+    =300,
     callback=callback,
-    maxiters=300)
-
+    allow_f_increases=false)
 
 optprob2 = remake(optprob2, u0=result_neuralode2.u)
 result_neuralode2 = Optimization.solve(optprob2,
@@ -169,15 +179,29 @@ result_neuralode2 = Optimization.solve(optprob2,
     maxiters=50,
     allow_f_increases=false)
 
-
-
 optprob2 = remake(optprob2, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-    Optimisers.ADAM(0.001),
-    maxiters=300,
+    Optimisers.ADAM(0.00001),
+    maxiters
+    =300,
     callback=callback,
     allow_f_increases=false)
+
+optprob2 = remake(optprob2, u0=result_neuralode2.u)
+result_neuralode2 = Optimization.solve(optprob2,
+    Optim.BFGS(initial_stepnorm=0.01),
+    callback=callback,
+    maxiters=50,
+    allow_f_increases=false)
+optprob2 = remake(optprob2, u0=result_neuralode2.u)
+result_neuralode2 = Optimization.solve(optprob2,
+    Optimisers.ADAM(0.00001),
+    maxiters
+    =10000,
+    callback=callback,
+    allow_f_increases=false)
+
 optprob2 = remake(optprob, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
