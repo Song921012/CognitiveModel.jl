@@ -7,7 +7,7 @@ using CSV
 using ComponentArrays
 using OptimizationOptimisers
 rng = Random.default_rng()
-Random.seed!(rng, 234)
+Random.seed!(rng, 1024)
 
 # load training dta
 
@@ -152,10 +152,10 @@ callback(pinit, loss_neuralode(pinit)...; doplot=true)
 adtype = Optimization.AutoForwardDiff()
 
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, pinit)
+optprob = Optimization.OptimizationProblem(optf, pfinal)
 
 result_neuralode2 = Optimization.solve(optprob,
-    OptimizationOptimisers.ADAM(0.01),
+    OptimizationOptimisers.ADAM(0.0000001),
     callback=callback,
     maxiters=10)
 optprob2 = remake(optprob, u0=result_neuralode2.u)
@@ -188,7 +188,7 @@ result_neuralode2 = Optimization.solve(optprob2,
 optprob2 = remake(optprob2, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-    Optimisers.ADAM(0.00001),
+    Optimisers.ADAM(0.000001),
     maxiters
     =300,
     callback=callback,
