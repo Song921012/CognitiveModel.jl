@@ -7,7 +7,7 @@ using CSV
 using ComponentArrays
 using OptimizationOptimisers
 rng = Random.default_rng()
-Random.seed!(rng, 735)
+Random.seed!(rng, 234)
 
 # load training dta
 
@@ -16,6 +16,12 @@ choosentime = range(366, 425)
 choosencolumn = [3, 15] # vaccined individuals, cases
 trainingdata = Array(data[choosentime, choosencolumn])'
 datascale = Array(data[choosentime, 2:end])'
+
+dailycase=Array(data[choosentime, 2])
+plot(dailycase)
+
+dailyvac=Array(data[choosentime, 14])
+plot(dailyvac)
 
 # initial value of M1,C1,M2,C2
 intercolumn = [10, 11] # M, C score vaccine
@@ -198,8 +204,15 @@ optprob2 = remake(optprob2, u0=result_neuralode2.u)
 result_neuralode2 = Optimization.solve(optprob2,
     Optimisers.ADAM(0.00001),
     maxiters
-    =10000,
+    =1000,
     callback=callback,
+    allow_f_increases=false)
+
+optprob2 = remake(optprob2, u0=result_neuralode2.u)
+result_neuralode2 = Optimization.solve(optprob2,
+    Optim.BFGS(initial_stepnorm=0.0001),
+    callback=callback,
+    maxiters=50,
     allow_f_increases=false)
 
 optprob2 = remake(optprob, u0=result_neuralode2.u)
