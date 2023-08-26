@@ -5,7 +5,7 @@ using DataFrames
 using CSV
 using ComponentArrays
 rng = Random.default_rng()
-Random.seed!(rng, 1314)
+Random.seed!(rng, 10)
 # load training dta
 
 data = DataFrame(CSV.File("./output/datasmoothing.csv"))
@@ -89,12 +89,12 @@ optprob2 = remake(optprob, u0=result_neuralode.u)
 result_neuralode2 = Optimization.solve(optprob2,
     Optim.BFGS(initial_stepnorm=0.01),
     callback=callback,
-    allow_f_increases=false)
+    maxiters=50)
 
 optprob2 = remake(optprob, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-    Optimisers.ADAM(0.05),
+    Optimisers.ADAM(0.0001),
     maxiters=300,
     callback=callback,
     allow_f_increases=false)
@@ -103,8 +103,40 @@ optprob2 = remake(optprob, u0=result_neuralode2.u)
 result_neuralode2 = Optimization.solve(optprob2,
     Optim.BFGS(initial_stepnorm=0.01),
     callback=callback,
+    maxiters=130)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+result_neuralode2 = Optimization.solve(optprob2,
+    Optimisers.ADAM(0.005),
+    maxiters=3000,
+    callback=callback,
     allow_f_increases=false)
 
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
+    Optim.BFGS(initial_stepnorm=0.01),
+    callback=callback,
+    allow_f_increases=false,
+    maxiters=100)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+result_neuralode2 = Optimization.solve(optprob2,
+    Optimisers.ADAM(0.00001),
+    maxiters=1000,
+    callback=callback,
+    allow_f_increases=false)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+
+result_neuralode2 = Optimization.solve(optprob2,
+    Optim.BFGS(initial_stepnorm=0.01),
+    callback=callback,
+    allow_f_increases=false,
+    maxiters=25)
+optprob2 = remake(optprob, u0=result_neuralode2.u)
+result_neuralode2 = Optimization.solve(optprob2,
+    Optimisers.ADAM(0.00005),
+    maxiters=1000,
+    callback=callback,
+    allow_f_increases=false)
 pfinal = result_neuralode2.u
 
 callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
@@ -112,7 +144,7 @@ callback(pfinal, loss_neuralode(pfinal)...; doplot=true)
 ##
 using BSON: @save
 @save "./output/annvac_second.bson" dudt2
-psave=collect(pfinal)
+psave = collect(pfinal)
 @save "./output/annvacpara_second.bson" psave
 pred = predict_neuralode(pfinal)
 plt = scatter(tsteps, trainingdata[1, :], label="Mvac Score")

@@ -152,7 +152,7 @@ callback(pinit, loss_neuralode(pinit)...; doplot=true)
 adtype = Optimization.AutoForwardDiff()
 
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, pfinal)
+optprob = Optimization.OptimizationProblem(optf, pinit)
 
 result_neuralode2 = Optimization.solve(optprob,
     OptimizationOptimisers.ADAM(0.0000001),
