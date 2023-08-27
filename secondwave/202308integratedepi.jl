@@ -21,7 +21,7 @@ dailycase=Array(data[choosentime, 2])
 plot(dailycase)
 
 dailyvac=Array(data[choosentime, 14])
-plot(dailyvac)
+display(plot(dailyvac))
 
 # initial value of M1,C1,M2,C2
 intercolumn = [10, 11] # M, C score vaccine
@@ -149,22 +149,22 @@ callback(pinit, loss_neuralode(pinit)...; doplot=true)
 
 # use Optimization.jl to solve the problem
 ##
+@load "./output/ann12epipfinal_second.bson" psave
+pinit=psave
 adtype = Optimization.AutoForwardDiff()
 
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, pinit)
 
 result_neuralode2 = Optimization.solve(optprob,
-    OptimizationOptimisers.ADAM(0.0000001),
+    OptimizationOptimisers.ADAM(0.001),
     callback=callback,
     maxiters=10)
 optprob2 = remake(optprob, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-    Optim.BFGS(initial_stepnorm=0.01),
-    callback=callback,
-    maxiters=100,
-    allow_f_increases=false)
+    Optim.BFGS(initial_stepnorm=0.001),
+    callback=callback)
 
 
 
@@ -172,9 +172,9 @@ result_neuralode2 = Optimization.solve(optprob2,
 optprob2 = remake(optprob2, u0=result_neuralode2.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-    Optimisers.ADAM(0.00001),
+    Optimisers.ADAM(0.0001),
     maxiters
-    =300,
+    =3000,
     callback=callback,
     allow_f_increases=false)
 
@@ -202,9 +202,9 @@ result_neuralode2 = Optimization.solve(optprob2,
     allow_f_increases=false)
 optprob2 = remake(optprob2, u0=result_neuralode2.u)
 result_neuralode2 = Optimization.solve(optprob2,
-    Optimisers.ADAM(0.00001),
+    Optimisers.ADAM(0.000001),
     maxiters
-    =1000,
+    =10000,
     callback=callback,
     allow_f_increases=false)
 
@@ -252,8 +252,11 @@ solfinal = solve(probfinal, Vern7(), saveat=tsteps)
 
 
 
-plot(tsteps, β.(tsteps))
-plot(tsteps, ν.(tsteps))
+display(plot(tsteps, β.(tsteps)))
+
+
+
+display(plot(tsteps, ν.(tsteps)))
 ##
 # Save neural network architechtures and 
 using BSON: @save
